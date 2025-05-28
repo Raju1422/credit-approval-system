@@ -11,6 +11,11 @@ services:
      - postgres_data:/var/lib/postgresql/data
    env_file:
      - .env
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
 
   django-web:
    build: .
@@ -19,6 +24,7 @@ services:
      - "8000:8000"
    depends_on:
      - db 
+     - redis
    environment:
      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
      DEBUG: ${DEBUG}
@@ -32,5 +38,19 @@ services:
      
    env_file:
      - .env 
+
+  celery-worker:
+    build: .
+    container_name: celery_worker
+    command: celery -A credit_approval_system worker --loglevel=info
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    env_file:
+      - .env
+
 volumes:
    postgres_data:
