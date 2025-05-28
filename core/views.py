@@ -3,8 +3,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Customer,Loan
-from .serializers import CustomerSerializer,CheckLoanEligibilityRequestSerializer,CheckLoanEligibilityResponseSerializer
+from .serializers import CustomerSerializer,CheckLoanEligibilityRequestSerializer,CheckLoanEligibilityResponseSerializer,CreateLoanResponseSerializer
 from .utils import corrected_interest_rate,calculate_emi,compute_credit_score
+from datetime import datetime,timedelta
 # Create your views here.
 
 class CustomerRegisterView(APIView):
@@ -87,5 +88,64 @@ class CheckEligibilityView(APIView):
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Customer.DoesNotExist:
             return Response({"error": "Customer not found."}, status=404)
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class CreateLoanView(APIView):
+    def post(self,request):
+        try:
+            eligibility_check = CheckEligibilityView()
+            eligibility_response = eligibility_check.post(request)
+            eligibility_data = eligibility_response.data
+            customer = Customer.objects.get(customer_id=eligibility_data["customer_id"])
+
+            if not eligibility_data.get("approval"):
+                return Response({
+                    "loan_id": None,
+                    "customer_id": customer.customer_id,
+                    "loan_approved": False,
+                    "message": "Loan not approved due to credit score or EMI burden",
+                    "monthly_installment": None
+                }, status=status.HTTP_403_FORBIDDEN)
+                
+            loan_amount = eligibility_data["monthly_installment"] * eligibility_data["tenure"]
+            corrected_rate = eligibility_data["corrected_interest_rate"]
+            tenure = eligibility_data["tenure"]
+            monthly_emi = eligibility_data["monthly_installment"]
+
+            start_date = datetime.today().date()
+            end_date = start_date + timedelta(days=tenure * 30)
+
+            loan = Loan.objects.create(
+                customer=customer,
+                loan_amount=loan_amount,
+                interest_rate=corrected_rate,
+                monthly_installment=monthly_emi,
+                tenure=tenure,
+                emis_paid_on_time=0,
+                start_date=start_date,
+                end_date=end_date
+            )
+
+            customer.current_debt += monthly_emi
+            customer.save()
+            response_data = {
+                "loan_id": loan.loan_id,
+                "customer_id": customer.customer_id,
+                "loan_approved": True,
+                "message": "Loan approved successfully",
+                "monthly_installment": monthly_emi
+            }
+            response_serializer = CreateLoanResponseSerializer(data=response_data)
+            if response_serializer.is_valid():
+                return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    'error': 'Internal server error',
+                    'details':response_serializer.errors,
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+
         except Exception as e:
             return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

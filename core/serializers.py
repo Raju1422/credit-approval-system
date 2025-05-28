@@ -31,4 +31,9 @@ class CheckLoanEligibilityResponseSerializer(serializers.Serializer):
     monthly_installment = serializers.FloatField()
 
 
-
+class CreateLoanResponseSerializer(serializers.Serializer):
+    loan_id = serializers.IntegerField(allow_null=True)
+    customer_id = serializers.IntegerField()
+    loan_approved = serializers.BooleanField()
+    message = serializers.CharField()
+    monthly_installment = serializers.FloatField(allow_null=True)
