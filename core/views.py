@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Customer,Loan
-from .serializers import CustomerSerializer,CheckLoanEligibilityRequestSerializer,CheckLoanEligibilityResponseSerializer,CreateLoanResponseSerializer,LoanDetailSerializer
+from .serializers import CustomerSerializer,CheckLoanEligibilityRequestSerializer,CheckLoanEligibilityResponseSerializer,CreateLoanResponseSerializer,LoanDetailSerializer,CustomerLoanListSerializer
 from .utils import corrected_interest_rate,calculate_emi,compute_credit_score
 from datetime import datetime,timedelta
 from django.http import Http404
@@ -163,5 +163,25 @@ class LoanDetailsView(APIView):
             loan = self.get_object(loan_id=loan_id)
             serializer = LoanDetailSerializer(loan)
             return Response(serializer.data,status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class CustomerLoanListView(APIView):
+    def get_object(self, customer_id):
+        try:
+            return Customer.objects.get(customer_id=customer_id)
+        except Customer.DoesNotExist:
+            raise Http404
+    
+    def get(self,request,customer_id):
+        try:
+            customer = self.get_object(customer_id=customer_id)
+            loans = Loan.objects.filter(customer=customer)
+            if not loans.exists():
+                return Response({"message": "No loans found for this customer."}, status=status.HTTP_404_NOT_FOUND)
+
+            serializer = CustomerLoanListSerializer(loans,many=True)
+            return Response(serializer.data,status=status.HTTP_200_OK)
+
         except Exception as e:
             return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

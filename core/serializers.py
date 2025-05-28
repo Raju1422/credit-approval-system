@@ -53,3 +53,18 @@ class LoanDetailSerializer(serializers.ModelSerializer):
         ]
 
 
+class CustomerLoanListSerializer(serializers.ModelSerializer):
+    repayments_left = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Loan
+        fields = [
+            'loan_id',
+            'loan_amount',
+            'interest_rate',
+            'monthly_installment',
+            'repayments_left'
+        ]
+    
+    def get_repayments_left(self, obj):
+        return max(obj.tenure - obj.emis_paid_on_time, 0)
