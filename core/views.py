@@ -158,7 +158,7 @@ class LoanDetailsView(APIView):
         except Loan.DoesNotExist:
             raise Http404
 
-    def post(self,request,loan_id):
+    def get(self,request,loan_id):
         try :
             loan = self.get_object(loan_id=loan_id)
             serializer = LoanDetailSerializer(loan)
