@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Customer
+from .models import Customer,Loan
 
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,3 +37,19 @@ class CreateLoanResponseSerializer(serializers.Serializer):
     loan_approved = serializers.BooleanField()
     message = serializers.CharField()
     monthly_installment = serializers.FloatField(allow_null=True)
+
+class LoanDetailSerializer(serializers.ModelSerializer):
+    customer = CustomerSerializer()
+
+    class Meta:
+        model = Loan
+        fields = [
+            'loan_id',
+            'customer',
+            'loan_amount',
+            'interest_rate',
+            'monthly_installment',
+            'tenure'
+        ]
+
+
