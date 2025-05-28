@@ -16,7 +16,15 @@ class CustomerRegisterView(APIView):
             serializer = CustomerSerializer(data=data)
             if serializer.is_valid():
                 customer = serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                response_data = {
+                    "customer_id": customer.customer_id,
+                    "name": f"{customer.first_name} {customer.last_name}",
+                    "age": customer.age,
+                    "monthly_income": customer.monthly_salary,
+                    "approved_limit": customer.approved_limit,
+                    "phone_number": customer.phone_number
+                }
+                return Response(response_data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except ValueError:
             return Response({"error": "Monthly income/salary must be an integer."}, status=status.HTTP_400_BAD_REQUEST)
