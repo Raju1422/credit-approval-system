@@ -19,7 +19,7 @@ class Customer(models.Model):
 
 
 class Loan(models.Model):
-    loan_id = models.PositiveIntegerField(primary_key=True)  # Use Loan ID as PK
+    loan_id = models.PositiveIntegerField(primary_key=True)  
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='loans')
     loan_amount = models.FloatField()
     tenure = models.PositiveIntegerField(help_text="Tenure in months")
