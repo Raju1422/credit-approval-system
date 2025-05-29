@@ -37,18 +37,27 @@ def ingest_loan_data(file_path):
     try:
         df = pd.read_excel(file_path)
         loans_to_create = []
+        seen_loan_ids = set()
         batch_size = 50
         for _,row in df.iterrows():
             customer_id = row['Customer ID']
+            loan_id = row['Loan ID']
+            if loan_id in seen_loan_ids:
+                print(f"Loan {loan_id} duplicated in file. Skipping.")
+                continue
+            seen_loan_ids.add(loan_id)
             try:
                 customer = Customer.objects.get(customer_id=customer_id)
             except Customer.DoesNotExist:
                 print("customer doesnot exist")
                 continue
+            if Loan.objects.filter(loan_id=loan_id).exists():
+                print(f"Loan {loan_id} already exists. Skipping.")
+                continue
             start_date = pd.to_datetime(row.get('Date of Approval')).date()
             end_date = pd.to_datetime(row.get('End Date')).date()
             loan = Loan(
-                loan_id=row['Loan ID'],  # primary key
+                loan_id=loan_id,  
                 customer=customer,
                 loan_amount=row['Loan Amount'],
                 tenure=row['Tenure'],
