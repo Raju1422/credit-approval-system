@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Customer,Loan
+from .models import Customer, Loan
+
 
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -14,6 +15,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             'phone_number'
         ]
         read_only_fields = ['customer_id']
+
 
 class CheckLoanEligibilityRequestSerializer(serializers.Serializer):
     customer_id = serializers.IntegerField()
@@ -38,6 +40,7 @@ class CreateLoanResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
     monthly_installment = serializers.FloatField(allow_null=True)
 
+
 class LoanDetailSerializer(serializers.ModelSerializer):
     customer = CustomerSerializer()
 
@@ -55,7 +58,7 @@ class LoanDetailSerializer(serializers.ModelSerializer):
 
 class CustomerLoanListSerializer(serializers.ModelSerializer):
     repayments_left = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Loan
         fields = [
@@ -65,6 +68,6 @@ class CustomerLoanListSerializer(serializers.ModelSerializer):
             'monthly_installment',
             'repayments_left'
         ]
-    
+
     def get_repayments_left(self, obj):
         return max(obj.tenure - obj.emis_paid_on_time, 0)

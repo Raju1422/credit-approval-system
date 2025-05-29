@@ -1,10 +1,8 @@
 from django.db import models
-from django.utils import timezone
-from datetime import timedelta
 
-# Create your models here.
+
 class Customer(models.Model):
-    customer_id = models.AutoField(primary_key=True)  
+    customer_id = models.AutoField(primary_key=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=15, unique=True)
@@ -15,11 +13,10 @@ class Customer(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.customer_id})"
-    
 
 
 class Loan(models.Model):
-    loan_id = models.AutoField(primary_key=True)  
+    loan_id = models.AutoField(primary_key=True)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='loans')
     loan_amount = models.FloatField()
     tenure = models.PositiveIntegerField(help_text="Tenure in months")
@@ -31,4 +28,3 @@ class Loan(models.Model):
 
     def __str__(self):
         return f"Loan {self.loan_id} for Customer {self.customer.customer_id}"
-

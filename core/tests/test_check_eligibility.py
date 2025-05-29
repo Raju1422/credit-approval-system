@@ -3,6 +3,7 @@ from rest_framework import status
 from django.urls import reverse
 from core.models import Customer
 
+
 class CheckEligibilityTest(APITestCase):
     def setUp(self):
         self.customer = Customer.objects.create(

@@ -4,6 +4,7 @@ from django.urls import reverse
 from core.models import Customer, Loan
 from datetime import date, timedelta
 
+
 class ViewLoanDetailTest(APITestCase):
     def setUp(self):
         self.customer = Customer.objects.create(

@@ -2,20 +2,29 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Customer,Loan
-from .serializers import CustomerSerializer,CheckLoanEligibilityRequestSerializer,CheckLoanEligibilityResponseSerializer,CreateLoanResponseSerializer,LoanDetailSerializer,CustomerLoanListSerializer
-from .utils import corrected_interest_rate,calculate_emi,compute_credit_score
-from datetime import datetime,timedelta
+from .models import Customer, Loan
+from .serializers import (
+    CustomerSerializer,
+    CheckLoanEligibilityRequestSerializer,
+    CheckLoanEligibilityResponseSerializer,
+    CreateLoanResponseSerializer,
+    LoanDetailSerializer,
+    CustomerLoanListSerializer,
+)
+from .utils import corrected_interest_rate, calculate_emi, compute_credit_score
+from datetime import datetime, timedelta
 from django.http import Http404
+
 # Create your views here.
 
+
 class CustomerRegisterView(APIView):
-    def post(self,request):
+    def post(self, request):
         try:
             data = request.data.copy()
-            salary = int(data['monthly_income'])  # Cast to integer
-            data['monthly_salary'] = salary
-            data['approved_limit'] = round(36 * salary, -5)
+            salary = int(data["monthly_income"])  # Cast to integer
+            data["monthly_salary"] = salary
+            data["approved_limit"] = round(36 * salary, -5)
             serializer = CustomerSerializer(data=data)
             if serializer.is_valid():
                 customer = serializer.save()
@@ -25,39 +34,48 @@ class CustomerRegisterView(APIView):
                     "age": customer.age,
                     "monthly_income": customer.monthly_salary,
                     "approved_limit": customer.approved_limit,
-                    "phone_number": customer.phone_number
+                    "phone_number": customer.phone_number,
                 }
                 return Response(response_data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except ValueError:
-            return Response({"error": "Monthly income/salary must be an integer."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Monthly income/salary must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except Exception as e:
-            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"Unexpected error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class CheckEligibilityView(APIView):
-    def post(self,request):
+    def post(self, request):
         try:
             request_serializer = CheckLoanEligibilityRequestSerializer(data=request.data)
             if not request_serializer.is_valid():
-                return Response({
-                    'error': 'Invalid request data',
-                    'details': request_serializer.errors
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {
+                        "error": "Invalid request data",
+                        "details": request_serializer.errors,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             validated_data = request_serializer.validated_data
-            customer_id = validated_data['customer_id']
-            loan_amount = validated_data['loan_amount']
-            interest_rate = validated_data['interest_rate']
-            tenure = validated_data['tenure']
+            customer_id = validated_data["customer_id"]
+            loan_amount = validated_data["loan_amount"]
+            interest_rate = validated_data["interest_rate"]
+            tenure = validated_data["tenure"]
 
             customer = Customer.objects.get(customer_id=customer_id)
             loans = Loan.objects.filter(customer=customer)
 
-            credit_score = compute_credit_score(customer,loans)
+            credit_score = compute_credit_score(customer, loans)
             print(credit_score)
             approved = False
 
-            if credit_score > 50 :
+            if credit_score > 50:
                 approved = True
             elif 30 < credit_score <= 50 and interest_rate >= 12:
                 approved = True
@@ -66,9 +84,9 @@ class CheckEligibilityView(APIView):
 
             corrected_interest = corrected_interest_rate(credit_score, interest_rate)
 
-            monthly_emi = calculate_emi(loan_amount,corrected_interest,tenure)
+            monthly_emi = calculate_emi(loan_amount, corrected_interest, tenure)
             total_emis = sum(loan.monthly_installment for loan in loans)
-            if total_emis > ( 0.5*customer.monthly_salary):
+            if total_emis > (0.5 * customer.monthly_salary):
                 approved = False
 
             response = {
@@ -77,24 +95,27 @@ class CheckEligibilityView(APIView):
                 "interest_rate": interest_rate,
                 "corrected_interest_rate": corrected_interest,
                 "tenure": tenure,
-                "monthly_installment": monthly_emi
+                "monthly_installment": monthly_emi,
             }
             response_serializer = CheckLoanEligibilityResponseSerializer(data=response)
             if response_serializer.is_valid():
                 return Response(response_serializer.validated_data, status=status.HTTP_200_OK)
             else:
-                return Response({
-                    'error': 'Internal server error',
-                    'details':response_serializer.errors,
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {"error": "Internal server error", "details": response_serializer.errors},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
         except Customer.DoesNotExist:
             return Response({"error": "Customer not found."}, status=404)
         except Exception as e:
-            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+            return Response(
+                {"error": f"Unexpected error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class CreateLoanView(APIView):
-    def post(self,request):
+    def post(self, request):
         try:
             eligibility_check = CheckEligibilityView()
             eligibility_response = eligibility_check.post(request)
@@ -102,14 +123,17 @@ class CreateLoanView(APIView):
             customer = Customer.objects.get(customer_id=eligibility_data["customer_id"])
 
             if not eligibility_data.get("approval"):
-                return Response({
-                    "loan_id": None,
-                    "customer_id": customer.customer_id,
-                    "loan_approved": False,
-                    "message": "Loan not approved due to credit score or EMI burden",
-                    "monthly_installment": None
-                }, status=status.HTTP_403_FORBIDDEN)
-                
+                return Response(
+                    {
+                        "loan_id": None,
+                        "customer_id": customer.customer_id,
+                        "loan_approved": False,
+                        "message": "Loan not approved due to credit score or EMI burden",
+                        "monthly_installment": None,
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
             loan_amount = eligibility_data["monthly_installment"] * eligibility_data["tenure"]
             corrected_rate = eligibility_data["corrected_interest_rate"]
             tenure = eligibility_data["tenure"]
@@ -126,7 +150,7 @@ class CreateLoanView(APIView):
                 tenure=tenure,
                 emis_paid_on_time=0,
                 start_date=start_date,
-                end_date=end_date
+                end_date=end_date,
             )
 
             customer.current_debt += monthly_emi
@@ -136,20 +160,23 @@ class CreateLoanView(APIView):
                 "customer_id": customer.customer_id,
                 "loan_approved": True,
                 "message": "Loan approved successfully",
-                "monthly_installment": monthly_emi
+                "monthly_installment": monthly_emi,
             }
             response_serializer = CreateLoanResponseSerializer(data=response_data)
             if response_serializer.is_valid():
                 return Response(response_serializer.data, status=status.HTTP_201_CREATED)
             else:
-                return Response({
-                    'error': 'Internal server error',
-                    'details':response_serializer.errors,
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                
+                return Response(
+                    {"error": "Internal server error", "details": response_serializer.errors},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
         except Exception as e:
-            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"Unexpected error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class LoanDetailsView(APIView):
     def get_object(self, loan_id):
@@ -158,30 +185,39 @@ class LoanDetailsView(APIView):
         except Loan.DoesNotExist:
             raise Http404
 
-    def get(self,request,loan_id):
-        try :
+    def get(self, request, loan_id):
+        try:
             loan = self.get_object(loan_id=loan_id)
             serializer = LoanDetailSerializer(loan)
-            return Response(serializer.data,status=status.HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+            return Response(
+                {"error": f"Unexpected error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
 class CustomerLoanListView(APIView):
     def get_object(self, customer_id):
         try:
             return Customer.objects.get(customer_id=customer_id)
         except Customer.DoesNotExist:
             raise Http404
-    
-    def get(self,request,customer_id):
+
+    def get(self, request, customer_id):
         try:
             customer = self.get_object(customer_id=customer_id)
             loans = Loan.objects.filter(customer=customer)
             if not loans.exists():
-                return Response({"message": "No loans found for this customer."}, status=status.HTTP_404_NOT_FOUND)
+                return Response(
+                    {"message": "No loans found for this customer."}, status=status.HTTP_404_NOT_FOUND
+                )
 
-            serializer = CustomerLoanListSerializer(loans,many=True)
-            return Response(serializer.data,status=status.HTTP_200_OK)
+            serializer = CustomerLoanListSerializer(loans, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"Unexpected error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
