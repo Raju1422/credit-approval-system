@@ -62,8 +62,8 @@ A Django-based backend application to manage a credit approval system, including
     from core.tasks import ingest_customer_data, ingest_loan_data
 
     # Trigger the Celery tasks (file path should be relative to container)
-    ingest_customer_data.delay('/app/customer_data.xlsx')
-    ingest_loan_data.delay('/app/loan_data.xlsx')
+    ingest_customer_data.delay('/app/data/customer_data.xlsx')
+    ingest_loan_data.delay('/app/data/loan_data.xlsx')
 
     ```
 
