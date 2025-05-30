@@ -35,7 +35,7 @@ A Django-based backend application to manage a credit approval system, including
 
 - Build and Run the Containers Use Docker Compose to build and start the containers:
     ```bash
-    docker compose up --build
+    docker compose up -d --build
     ```
 
 #### **Run Migrations**
